@@ -2,10 +2,30 @@ project('vapoursynth', ['c', 'cpp'],
     default_options: ['buildtype=release', 'default_library=both', 'warning_level=2', 'b_ndebug=if-release', 'c_std=c99', 'cpp_std=c++17'],
     license: 'LGPL-2.1-or-later',
     meson_version: '>=0.60.0',
-    version: run_command('cat', 'VAPOURSYNTH_VERSION', check: true).stdout().strip().split('-')[0]
+    version: run_command(
+        find_program('python3', 'python'),
+        '-c',
+        '''
+with open("VAPOURSYNTH_VERSION") as f:
+    txt = f.read()
+    CURRENT_RELEASE = txt.split(' ')[-1].strip().split('-')[0]
+    print(CURRENT_RELEASE)
+        ''',
+        check: true
+    ).stdout().strip()
 )
 
-VS_CURRENT_VERSION = run_command('cat', 'VAPOURSYNTH_VERSION', check: true).stdout().strip()
+VS_CURRENT_VERSION = run_command(
+        find_program('python3', 'python'),
+        '-c',
+        '''
+with open("VAPOURSYNTH_VERSION") as f:
+    txt = f.read()
+    CURRENT_RELEASE = txt.split(' ')[-1].strip().split('-')[0]
+    print(CURRENT_RELEASE)
+        ''',
+        check: true
+    ).stdout().strip()
 VS_VERSION = VS_CURRENT_VERSION.split('-')[0]
 
 enable_guard_pattern = get_option('enable_guard_pattern')
@@ -36,7 +56,13 @@ py_module_linking = false
 
 vspipe_link_args = []
 
-add_project_arguments(['-Wno-ignored-attributes', '-Wno-unused-function', '-Wno-unused-parameter'], language: lang)
+if cxx.get_argument_syntax() == 'gcc'
+    add_project_arguments(cxx.get_supported_arguments('-Wno-ignored-attributes', '-Wno-unused-function', '-Wno-unused-parameter', 'off'), language: lang)
+endif
+
+if cxx.get_argument_syntax() == 'msvc'
+    add_project_arguments('/DNOMINMAX', language : 'cpp')
+endif
 
 add_project_arguments(['-DVS_CURRENT_RELEASE=@0@'.format(VS_VERSION), '-DVS_GRAPH_API'], language: lang)
 
@@ -48,7 +74,10 @@ elif host_cpu_family.startswith('x86')
     if enable_x86_asm
         add_project_arguments('-DVS_TARGET_CPU_X86', language: lang)
     endif
-    add_project_arguments(['-mfpmath=sse', '-msse2'], language: lang)
+
+    if cxx.get_argument_syntax() == 'gcc'
+        add_project_arguments(cxx.get_supported_arguments('-mfpmath=sse', '-msse2', 'off'), language: lang)
+    endif
 endif
 
 if not host_cpu_family.startswith('x86')
@@ -302,7 +331,8 @@ if enable_vsscript
             'src/vspipe/md5.h',
             'src/vspipe/printgraph.cpp',
             'src/vspipe/printgraph.h',
-            'src/vspipe/vspipe.cpp'
+            'src/vspipe/vspipe.cpp',
+            'src/vspipe/vsjson.cpp'
         ]
 
         executable('vspipe', sources,
