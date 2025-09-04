@@ -1,0 +1,6 @@
+[wrap-git]
+url = https://github.com/moi15moi/libp2p
+revision = Add-meson
+
+[provide]
+libp2p = libp2p_dep

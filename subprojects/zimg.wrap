@@ -1,0 +1,7 @@
+[wrap-git]
+url = https://github.com/robxnano/zimg
+revision = meson
+clone-recursive = true
+
+[provide]
+zimg = zimg
